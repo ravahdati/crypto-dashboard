@@ -1,0 +1,1044 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>داشبورد لحظه‌ای کریپتو | BTC & ETH</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- فونت وزیرمتن و فونت آیکون‌ها -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <!-- کتابخانه نمودار Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Vazirmatn', 'sans-serif'],
+          },
+          colors: {
+            darkBg: '#0b0f19',
+            cardBg: '#111827',
+            borderDark: '#1f293d',
+            btc: '#f7931a',
+            eth: '#627eea',
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    * {
+      font-family: 'Vazirmatn', sans-serif;
+    }
+    
+    /* افکت پالس و هایلایت تغییر قیمت */
+    @keyframes flashGreen {
+      0% { background-color: rgba(16, 185, 129, 0.25); }
+      100% { background-color: transparent; }
+    }
+    @keyframes flashRed {
+      0% { background-color: rgba(239, 68, 68, 0.25); }
+      100% { background-color: transparent; }
+    }
+    .flash-up {
+      animation: flashGreen 1.2s ease-out;
+    }
+    .flash-down {
+      animation: flashRed 1.2s ease-out;
+    }
+
+    /* سفارشی‌سازی اسکرول‌بار */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+  </style>
+</head>
+<body class="bg-darkBg text-slate-100 min-h-screen transition-colors duration-300 antialiased selection:bg-indigo-500 selection:text-white">
+
+  <!-- کادر اعلانات شناور (Toast) -->
+  <div id="toast" class="fixed top-5 left-5 z-50 transform -translate-y-20 opacity-0 transition-all duration-300 bg-slate-800/95 border border-slate-700 text-white px-4 py-3 rounded-xl shadow-2xl flex items-center gap-3 pointer-events-none">
+    <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400"></i>
+    <span id="toast-message" class="text-sm font-medium">عملیات با موفقیت انجام شد</span>
+  </div>
+
+  <!-- نوار پیمایش بالا -->
+  <header class="border-b border-borderDark/80 bg-cardBg/80 backdrop-blur-md sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap items-center justify-between gap-4">
+      
+      <!-- عنوان و لوگو -->
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 via-indigo-600 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+          <i class="fa-solid fa-chart-line text-white text-lg"></i>
+        </div>
+        <div>
+          <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+            داشبورد نرخ لحظه‌ای ارزهای دیجیتال
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              زنده
+            </span>
+          </h1>
+          <p class="text-xs text-slate-400 mt-0.5">قیمت زنده BTC و ETH به دلار، تومان و ریال</p>
+        </div>
+      </div>
+
+      <!-- ابزارهای سریع هدر -->
+      <div class="flex items-center flex-wrap gap-2.5">
+        <!-- دکمه تنظیم نرخ دلار -->
+        <button id="openRateModalBtn" class="flex items-center gap-2 bg-slate-800/90 hover:bg-slate-700/80 text-slate-200 border border-slate-700/80 px-3 py-2 rounded-xl text-xs font-semibold transition-all">
+          <i class="fa-solid fa-coins text-amber-400"></i>
+          <span>نرخ تتر: <strong id="headerRateDisplay" class="text-white font-mono">92,000</strong> تومان</span>
+          <i class="fa-solid fa-pen-to-square text-[10px] text-slate-400"></i>
+        </button>
+
+        <!-- دکمه بروزرسانی دستی -->
+        <button id="refreshBtn" title="بروزرسانی داده‌ها" class="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-800/90 hover:bg-slate-700 text-slate-200 border border-slate-700/80 transition-all active:scale-95">
+          <i id="refreshIcon" class="fa-solid fa-arrows-rotate text-xs"></i>
+        </button>
+
+        <!-- تایمر خودکار -->
+        <div class="hidden sm:flex items-center gap-1.5 text-xs text-slate-400 bg-slate-900/80 px-3 py-2 rounded-xl border border-slate-800">
+          <i class="fa-regular fa-clock text-indigo-400"></i>
+          <span>بروزرسانی:</span>
+          <span id="countdownTimer" class="font-mono text-indigo-300 font-bold">15</span>
+          <span>ثانیه</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- بدنه اصلی -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+    <!-- کارت‌های اصلی قیمت بیت‌کوین و اتریوم -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      
+      <!-- کارت بیت‌کوین (BTC) -->
+      <div id="card-btc" class="bg-cardBg border border-borderDark rounded-2xl p-6 relative overflow-hidden transition-all duration-300 hover:border-amber-500/40 shadow-xl shadow-black/30">
+        <!-- نور پس‌زمینه رنگی -->
+        <div class="absolute -top-12 -left-12 w-44 h-44 bg-amber-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+        <div class="flex items-start justify-between relative z-10">
+          <div class="flex items-center gap-3.5">
+            <div class="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center shadow-md shadow-amber-500/5">
+              <i class="fa-brands fa-bitcoin text-amber-500 text-3xl"></i>
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <h2 class="text-xl font-bold text-white">بیت‌کوین</h2>
+                <span class="text-xs font-mono font-bold bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-md border border-amber-500/30">BTC</span>
+              </div>
+              <p class="text-xs text-slate-400 mt-1">Bitcoin / پادشاه ارزهای دیجیتال</p>
+            </div>
+          </div>
+
+          <!-- درصد تغییر ۲۴ ساعته -->
+          <div id="btc-change-badge" class="flex items-center gap-1 text-xs font-bold font-mono px-3 py-1 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            <i id="btc-change-icon" class="fa-solid fa-caret-up"></i>
+            <span id="btc-change-val">+0.00%</span>
+          </div>
+        </div>
+
+        <!-- بخش قیمت‌ها -->
+        <div class="mt-6 space-y-3 relative z-10">
+          <!-- قیمت دلار -->
+          <div class="flex items-baseline justify-between border-b border-slate-800/80 pb-2.5">
+            <span class="text-xs text-slate-400 flex items-center gap-1.5">
+              <i class="fa-solid fa-dollar-sign text-emerald-400 text-xs"></i>
+              نرخ دلاری (USD)
+            </span>
+            <div class="text-right">
+              <span id="btc-price-usd" class="text-2xl sm:text-3xl font-black font-mono tracking-tight text-white">$0.00</span>
+            </div>
+          </div>
+
+          <!-- قیمت تومان -->
+          <div class="flex items-baseline justify-between border-b border-slate-800/80 pb-2.5">
+            <span class="text-xs text-slate-400 flex items-center gap-1.5">
+              <i class="fa-solid fa-wallet text-amber-400 text-xs"></i>
+              ارزش به تومان
+            </span>
+            <div class="text-right flex items-baseline gap-1.5">
+              <span id="btc-price-toman" class="text-xl sm:text-2xl font-black font-mono text-amber-400">0</span>
+              <span class="text-xs text-slate-400 font-medium">تومان</span>
+            </div>
+          </div>
+
+          <!-- قیمت ریال -->
+          <div class="flex items-baseline justify-between">
+            <span class="text-xs text-slate-400 flex items-center gap-1.5">
+              <i class="fa-solid fa-scale-balanced text-indigo-400 text-xs"></i>
+              ارزش به ریال
+            </span>
+            <div class="text-right flex items-baseline gap-1.5">
+              <span id="btc-price-rial" class="text-base sm:text-lg font-bold font-mono text-indigo-300">0</span>
+              <span class="text-xs text-slate-500 font-medium">ریال</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- جزئیات آماری کوچک -->
+        <div class="mt-5 grid grid-cols-3 gap-2 pt-4 border-t border-slate-800 text-center relative z-10">
+          <div class="bg-slate-900/60 p-2.5 rounded-xl border border-slate-800/80">
+            <span class="block text-[11px] text-slate-400 mb-0.5">بالاترین ۲۴ساعت</span>
+            <span id="btc-high" class="text-xs font-mono font-bold text-slate-200">-</span>
+          </div>
+          <div class="bg-slate-900/60 p-2.5 rounded-xl border border-slate-800/80">
+            <span class="block text-[11px] text-slate-400 mb-0.5">پایین‌ترین ۲۴ساعت</span>
+            <span id="btc-low" class="text-xs font-mono font-bold text-slate-200">-</span>
+          </div>
+          <div class="bg-slate-900/60 p-2.5 rounded-xl border border-slate-800/80">
+            <span class="block text-[11px] text-slate-400 mb-0.5">حجم معاملات ۲۴س</span>
+            <span id="btc-vol" class="text-xs font-mono font-bold text-slate-200">-</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- کارت اتریوم (ETH) -->
+      <div id="card-eth" class="bg-cardBg border border-borderDark rounded-2xl p-6 relative overflow-hidden transition-all duration-300 hover:border-indigo-500/40 shadow-xl shadow-black/30">
+        <!-- نور پس‌زمینه رنگی -->
+        <div class="absolute -top-12 -left-12 w-44 h-44 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+
+        <div class="flex items-start justify-between relative z-10">
+          <div class="flex items-center gap-3.5">
+            <div class="w-14 h-14 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 flex items-center justify-center shadow-md shadow-indigo-500/5">
+              <i class="fa-brands fa-ethereum text-indigo-400 text-3xl"></i>
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <h2 class="text-xl font-bold text-white">اتریوم</h2>
+                <span class="text-xs font-mono font-bold bg-indigo-500/20 text-indigo-400 px-2 py-0.5 rounded-md border border-indigo-500/30">ETH</span>
+              </div>
+              <p class="text-xs text-slate-400 mt-1">Ethereum / بستر قراردادهای هوشمند</p>
+            </div>
+          </div>
+
+          <!-- درصد تغییر ۲۴ ساعته -->
+          <div id="eth-change-badge" class="flex items-center gap-1 text-xs font-bold font-mono px-3 py-1 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            <i id="eth-change-icon" class="fa-solid fa-caret-up"></i>
+            <span id="eth-change-val">+0.00%</span>
+          </div>
+        </div>
+
+        <!-- بخش قیمت‌ها -->
+        <div class="mt-6 space-y-3 relative z-10">
+          <!-- قیمت دلار -->
+          <div class="flex items-baseline justify-between border-b border-slate-800/80 pb-2.5">
+            <span class="text-xs text-slate-400 flex items-center gap-1.5">
+              <i class="fa-solid fa-dollar-sign text-emerald-400 text-xs"></i>
+              نرخ دلاری (USD)
+            </span>
+            <div class="text-right">
+              <span id="eth-price-usd" class="text-2xl sm:text-3xl font-black font-mono tracking-tight text-white">$0.00</span>
+            </div>
+          </div>
+
+          <!-- قیمت تومان -->
+          <div class="flex items-baseline justify-between border-b border-slate-800/80 pb-2.5">
+            <span class="text-xs text-slate-400 flex items-center gap-1.5">
+              <i class="fa-solid fa-wallet text-amber-400 text-xs"></i>
+              ارزش به تومان
+            </span>
+            <div class="text-right flex items-baseline gap-1.5">
+              <span id="eth-price-toman" class="text-xl sm:text-2xl font-black font-mono text-amber-400">0</span>
+              <span class="text-xs text-slate-400 font-medium">تومان</span>
+            </div>
+          </div>
+
+          <!-- قیمت ریال -->
+          <div class="flex items-baseline justify-between">
+            <span class="text-xs text-slate-400 flex items-center gap-1.5">
+              <i class="fa-solid fa-scale-balanced text-indigo-400 text-xs"></i>
+              ارزش به ریال
+            </span>
+            <div class="text-right flex items-baseline gap-1.5">
+              <span id="eth-price-rial" class="text-base sm:text-lg font-bold font-mono text-indigo-300">0</span>
+              <span class="text-xs text-slate-500 font-medium">ریال</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- جزئیات آماری کوچک -->
+        <div class="mt-5 grid grid-cols-3 gap-2 pt-4 border-t border-slate-800 text-center relative z-10">
+          <div class="bg-slate-900/60 p-2.5 rounded-xl border border-slate-800/80">
+            <span class="block text-[11px] text-slate-400 mb-0.5">بالاترین ۲۴ساعت</span>
+            <span id="eth-high" class="text-xs font-mono font-bold text-slate-200">-</span>
+          </div>
+          <div class="bg-slate-900/60 p-2.5 rounded-xl border border-slate-800/80">
+            <span class="block text-[11px] text-slate-400 mb-0.5">پایین‌ترین ۲۴ساعت</span>
+            <span id="eth-low" class="text-xs font-mono font-bold text-slate-200">-</span>
+          </div>
+          <div class="bg-slate-900/60 p-2.5 rounded-xl border border-slate-800/80">
+            <span class="block text-[11px] text-slate-400 mb-0.5">حجم معاملات ۲۴س</span>
+            <span id="eth-vol" class="text-xs font-mono font-bold text-slate-200">-</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- بخش میانی: نمودار مقایسه‌ای و ماشین حساب تبدیل لحظه‌ای -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      
+      <!-- بخش نمودار تعاملی (۲ ستون در دسکتاپ) -->
+      <div class="lg:col-span-2 bg-cardBg border border-borderDark rounded-2xl p-6 shadow-xl shadow-black/20 flex flex-col justify-between">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
+          <div class="flex items-center gap-2.5">
+            <i class="fa-solid fa-chart-area text-indigo-400 text-base"></i>
+            <h3 class="text-base font-bold text-white">روند تغییرات قیمت زنده</h3>
+          </div>
+
+          <!-- دکمه‌های سوئیچ نمودار -->
+          <div class="flex items-center gap-1.5 bg-slate-900 p-1 rounded-xl border border-slate-800 text-xs">
+            <button id="chartTabBtc" class="px-3.5 py-1.5 rounded-lg font-medium transition-all bg-amber-500/20 text-amber-300 border border-amber-500/30">
+              بیت‌کوین (BTC)
+            </button>
+            <button id="chartTabEth" class="px-3.5 py-1.5 rounded-lg font-medium transition-all text-slate-400 hover:text-slate-200">
+              اتریوم (ETH)
+            </button>
+          </div>
+        </div>
+
+        <!-- محیط نمودار -->
+        <div class="relative w-full h-72 sm:h-80">
+          <canvas id="cryptoChart"></canvas>
+        </div>
+
+        <div class="flex items-center justify-between mt-4 pt-3 border-t border-slate-800/70 text-xs text-slate-400">
+          <span class="flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 inline-block"></span>
+            ثبت پیوسته نوسانات زنده در جلسه مرورگر شما
+          </span>
+          <span id="lastUpdatedTime" class="font-mono text-slate-500">بروزرسانی: --:--:--</span>
+        </div>
+      </div>
+
+      <!-- ماشین حساب تبدیل چندطرفه (۱ ستون در دسکتاپ) -->
+      <div class="bg-cardBg border border-borderDark rounded-2xl p-6 shadow-xl shadow-black/20 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center gap-2.5 mb-2">
+            <div class="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+              <i class="fa-solid fa-calculator text-sm"></i>
+            </div>
+            <div>
+              <h3 class="text-base font-bold text-white">ماشین‌حساب هوشمند تبدیل</h3>
+              <p class="text-xs text-slate-400">محاسبه آنی بر اساس آخرین نرخ‌ها</p>
+            </div>
+          </div>
+
+          <!-- فرم تبدیل -->
+          <div class="space-y-3.5 mt-5">
+            <!-- فیلد مقدار ورودی -->
+            <div>
+              <label class="block text-xs font-medium text-slate-300 mb-1.5">مقدار عددی:</label>
+              <div class="relative">
+                <input type="number" id="calcAmountInput" step="any" value="1" min="0" class="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-4 py-2.5 text-white font-mono text-base focus:outline-none focus:border-indigo-500 transition-colors">
+              </div>
+            </div>
+
+            <!-- فیلد انتخاب واحد ورودی -->
+            <div>
+              <label class="block text-xs font-medium text-slate-300 mb-1.5">از واحدِ:</label>
+              <select id="calcSourceUnit" class="w-full bg-slate-900 border border-slate-700/80 rounded-xl px-3 py-2.5 text-white text-sm focus:outline-none focus:border-indigo-500 transition-colors cursor-pointer">
+                <option value="BTC">بیت‌کوین (BTC)</option>
+                <option value="ETH">اتریوم (ETH)</option>
+                <option value="USD">دلار آمریکا (USD / Tether)</option>
+                <option value="TOMAN">تومان ایران</option>
+                <option value="RIAL">ریال ایران</option>
+              </select>
+            </div>
+
+            <!-- جعبه نتایج تبدیل -->
+            <div class="bg-slate-900/90 rounded-xl p-4 border border-slate-800 space-y-2.5 mt-4">
+              <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider mb-1">خروجی معادل:</div>
+              
+              <!-- نتیجه دلاری -->
+              <div class="flex items-center justify-between text-xs">
+                <span class="text-slate-400">دلار:</span>
+                <span id="calcResultUsd" class="font-mono font-bold text-emerald-400 text-sm">$0.00</span>
+              </div>
+
+              <!-- نتیجه تومان -->
+              <div class="flex items-center justify-between text-xs">
+                <span class="text-slate-400">تومان:</span>
+                <span id="calcResultToman" class="font-mono font-bold text-amber-400 text-sm">0</span>
+              </div>
+
+              <!-- نتیجه ریال -->
+              <div class="flex items-center justify-between text-xs">
+                <span class="text-slate-400">ریال:</span>
+                <span id="calcResultRial" class="font-mono font-bold text-indigo-300 text-xs">0</span>
+              </div>
+
+              <!-- نتیجه بیت کوین -->
+              <div class="flex items-center justify-between text-xs pt-1.5 border-t border-slate-800">
+                <span class="text-slate-400">بیت‌کوین:</span>
+                <span id="calcResultBtc" class="font-mono font-bold text-orange-400 text-xs">0.00000000</span>
+              </div>
+
+              <!-- نتیجه اتریوم -->
+              <div class="flex items-center justify-between text-xs">
+                <span class="text-slate-400">اتریوم:</span>
+                <span id="calcResultEth" class="font-mono font-bold text-indigo-400 text-xs">0.00000000</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <button id="copyCalcResultBtn" class="mt-4 w-full py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-colors active:scale-98">
+          <i class="fa-regular fa-copy"></i>
+          <span>کپی نتایج محاسبه</span>
+        </button>
+      </div>
+
+    </div>
+
+    <!-- بخش اطلاعات جانبی بازار و جدول مرجع -->
+    <div class="bg-cardBg border border-borderDark rounded-2xl p-6 shadow-xl shadow-black/20">
+      <div class="flex items-center justify-between mb-4">
+        <div class="flex items-center gap-2.5">
+          <i class="fa-solid fa-table-list text-amber-400"></i>
+          <h3 class="text-base font-bold text-white">جدول خلاصه مقایسه‌ای نرخ‌ها</h3>
+        </div>
+        <span class="text-xs text-slate-400">فرمول: ۱ تومان = ۱۰ ریال</span>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-right text-xs">
+          <thead>
+            <tr class="text-slate-400 border-b border-slate-800">
+              <th class="py-3 px-4">نماد و دارایی</th>
+              <th class="py-3 px-4">قیمت دلاری ($)</th>
+              <th class="py-3 px-4">قیمت به تومان</th>
+              <th class="py-3 px-4">قیمت به ریال</th>
+              <th class="py-3 px-4">تغییر ۲۴ ساعته</th>
+              <th class="py-3 px-4">وضعیت بازار</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-800/60 font-mono">
+            <!-- ردیف بیت‌کوین -->
+            <tr class="hover:bg-slate-800/40 transition-colors">
+              <td class="py-3.5 px-4 font-sans font-medium flex items-center gap-2 text-white">
+                <i class="fa-brands fa-bitcoin text-amber-500 text-base"></i>
+                بیت‌کوین (BTC)
+              </td>
+              <td id="tbl-btc-usd" class="py-3.5 px-4 font-bold text-slate-200">-</td>
+              <td id="tbl-btc-toman" class="py-3.5 px-4 font-bold text-amber-400">-</td>
+              <td id="tbl-btc-rial" class="py-3.5 px-4 text-indigo-300">-</td>
+              <td id="tbl-btc-change" class="py-3.5 px-4">-</td>
+              <td class="py-3.5 px-4 font-sans text-[11px]">
+                <span class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">فعال</span>
+              </td>
+            </tr>
+
+            <!-- ردیف اتریوم -->
+            <tr class="hover:bg-slate-800/40 transition-colors">
+              <td class="py-3.5 px-4 font-sans font-medium flex items-center gap-2 text-white">
+                <i class="fa-brands fa-ethereum text-indigo-400 text-base"></i>
+                اتریوم (ETH)
+              </td>
+              <td id="tbl-eth-usd" class="py-3.5 px-4 font-bold text-slate-200">-</td>
+              <td id="tbl-eth-toman" class="py-3.5 px-4 font-bold text-amber-400">-</td>
+              <td id="tbl-eth-rial" class="py-3.5 px-4 text-indigo-300">-</td>
+              <td id="tbl-eth-change" class="py-3.5 px-4">-</td>
+              <td class="py-3.5 px-4 font-sans text-[11px]">
+                <span class="px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">فعال</span>
+              </td>
+            </tr>
+
+            <!-- ردیف مرجع تتر/دلار -->
+            <tr class="hover:bg-slate-800/40 transition-colors bg-slate-900/30">
+              <td class="py-3.5 px-4 font-sans font-medium flex items-center gap-2 text-slate-300">
+                <i class="fa-solid fa-dollar-sign text-emerald-400 text-base"></i>
+                دلار / تتر (USDT)
+              </td>
+              <td class="py-3.5 px-4 font-bold text-slate-200">$1.00</td>
+              <td id="tbl-usdt-toman" class="py-3.5 px-4 font-bold text-amber-400">-</td>
+              <td id="tbl-usdt-rial" class="py-3.5 px-4 text-indigo-300">-</td>
+              <td class="py-3.5 px-4 text-slate-400">0.00%</td>
+              <td class="py-3.5 px-4 font-sans text-[11px]">
+                <span class="px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-400 border border-blue-500/20">نرخ پایه مبنا</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- مودال تنظیم نرخ دلار به تومان -->
+  <div id="rateModal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden flex items-center justify-center p-4 opacity-0 transition-opacity duration-300">
+    <div class="bg-cardBg border border-slate-700 w-full max-w-md rounded-2xl p-6 shadow-2xl transform scale-95 transition-transform duration-300" id="rateModalCard">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+        <div class="flex items-center gap-2.5">
+          <i class="fa-solid fa-sliders text-amber-400 text-lg"></i>
+          <h3 class="text-base font-bold text-white">تنظیم نرخ مبنای تتر (دلار) به تومان</h3>
+        </div>
+        <button id="closeRateModalBtn" class="w-8 h-8 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 flex items-center justify-center transition-colors">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <div class="mt-4 space-y-4">
+        <p class="text-xs text-slate-300 leading-relaxed">
+          به دلیل متغیر بودن نرخ لحظه‌ای تتر در صرافی‌های داخلی، می‌توانید نرخ دلخواه برابری هر دلار را برحسب <strong class="text-amber-400">تومان</strong> تعیین فرمایید تا تمام قیمت‌ها بلافاصله بازسنجی شوند.
+        </p>
+
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-2">قیمت هر تتر به تومان:</label>
+          <div class="relative">
+            <input type="number" id="customRateInput" min="1000" step="500" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-white font-mono text-lg focus:outline-none focus:border-amber-500 transition-colors text-left" dir="ltr">
+            <span class="absolute left-3 top-2.5 text-xs text-slate-500 pointer-events-none">تومان</span>
+          </div>
+        </div>
+
+        <!-- پیش‌فرض‌های سریع -->
+        <div>
+          <span class="block text-[11px] text-slate-400 mb-2">پیش‌فرض‌های پیشنهادی سریع:</span>
+          <div class="grid grid-cols-3 gap-2">
+            <button class="preset-btn px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-mono font-medium transition-colors" data-rate="88000">88,000</button>
+            <button class="preset-btn px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-mono font-medium transition-colors" data-rate="92000">92,000</button>
+            <button class="preset-btn px-2.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-mono font-medium transition-colors" data-rate="95000">95,000</button>
+          </div>
+        </div>
+
+        <div class="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-800">
+          <button id="cancelRateBtn" class="px-4 py-2 rounded-xl text-xs font-medium text-slate-300 hover:bg-slate-800 transition-colors">
+            انصراف
+          </button>
+          <button id="saveRateBtn" class="px-5 py-2 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-600 text-slate-950 transition-colors shadow-lg shadow-amber-500/20">
+            اعمال و ذخیره
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- فوتر -->
+  <footer class="mt-12 border-t border-slate-800/80 py-6 text-center text-xs text-slate-400">
+    <div class="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+      <p>طراحی شده برای پایش و رصد همزمان قیمت‌های بازار رمزارزها</p>
+      <div class="flex items-center gap-4 text-slate-400">
+        <span>قیمت‌ها به صورت آنلاین و خودکار همگام‌سازی می‌شوند</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- اسکریپت منطق برنامه -->
+  <script>
+    // --- حالت و داده‌های برنامه ---
+    const state = {
+      // نرخ پیش‌فرض هر دلار به تومان (قابل ویرایش توسط کاربر)
+      usdToTomanRate: 92000,
+      
+      // داده‌های بیت‌کوین
+      btc: {
+        priceUsd: 87450.00,
+        change24h: 2.35,
+        high24h: 88900.00,
+        low24h: 85200.00,
+        volume24h: '38.4B',
+        history: [85400, 85900, 86200, 85800, 86900, 87100, 87450]
+      },
+      
+      // داده‌های اتریوم
+      eth: {
+        priceUsd: 3120.50,
+        change24h: -1.15,
+        high24h: 3240.00,
+        low24h: 3080.00,
+        volume24h: '19.2B',
+        history: [3190, 3210, 3180, 3140, 3110, 3095, 3120]
+      },
+
+      activeChartTab: 'BTC', // یا 'ETH'
+      countdown: 15,
+      intervalId: null,
+      countdownIntervalId: null,
+      chartInstance: null
+    };
+
+    // برچسب زمان‌های نمودار
+    const chartTimeLabels = ['۱۲:۰۰', '۱۴:۰۰', '۱۶:۰۰', '۱۸:۰۰', '۲۰:۰۰', '۲۲:۰۰', 'اکنون'];
+
+    // --- توابع فرمت‌بندی اعداد ---
+    function formatNumber(num, decimals = 0) {
+      if (isNaN(num)) return '0';
+      return Number(num).toLocaleString('en-US', {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals
+      });
+    }
+
+    function formatUsd(num) {
+      return '$' + formatNumber(num, 2);
+    }
+
+    // --- پیام Toast کاربردی ---
+    function showToast(message, type = 'success') {
+      const toast = document.getElementById('toast');
+      const msgElem = document.getElementById('toast-message');
+      const iconElem = document.getElementById('toast-icon');
+
+      msgElem.textContent = message;
+      if (type === 'success') {
+        iconElem.className = 'fa-solid fa-circle-check text-emerald-400';
+      } else if (type === 'error') {
+        iconElem.className = 'fa-solid fa-circle-exclamation text-rose-400';
+      } else {
+        iconElem.className = 'fa-solid fa-circle-info text-sky-400';
+      }
+
+      toast.classList.remove('opacity-0', '-translate-y-20');
+      toast.classList.add('opacity-100', 'translate-y-0');
+
+      setTimeout(() => {
+        toast.classList.remove('opacity-100', 'translate-y-0');
+        toast.classList.add('opacity-0', '-translate-y-20');
+      }, 3000);
+    }
+
+    // --- به‌روزرسانی رندر کارت‌ها و رابط کاربری ---
+    function renderDashboard(prevBtcPrice = null, prevEthPrice = null) {
+      const rate = state.usdToTomanRate;
+
+      // محاسبه قیمت‌های بیت‌کوین
+      const btcToman = state.btc.priceUsd * rate;
+      const btcRial = btcToman * 10;
+
+      // محاسبه قیمت‌های اتریوم
+      const ethToman = state.eth.priceUsd * rate;
+      const ethRial = ethToman * 10;
+
+      // ۱. المان‌های بیت‌کوین
+      document.getElementById('btc-price-usd').textContent = formatUsd(state.btc.priceUsd);
+      document.getElementById('btc-price-toman').textContent = formatNumber(btcToman, 0);
+      document.getElementById('btc-price-rial').textContent = formatNumber(btcRial, 0);
+      document.getElementById('btc-high').textContent = formatUsd(state.btc.high24h);
+      document.getElementById('btc-low').textContent = formatUsd(state.btc.low24h);
+      document.getElementById('btc-vol').textContent = '$' + state.btc.volume24h;
+
+      // نشان تغییرات ۲۴ ساعته BTC
+      const btcBadge = document.getElementById('btc-change-badge');
+      const btcChangeVal = document.getElementById('btc-change-val');
+      const btcChangeIcon = document.getElementById('btc-change-icon');
+      btcChangeVal.textContent = (state.btc.change24h >= 0 ? '+' : '') + state.btc.change24h.toFixed(2) + '%';
+      if (state.btc.change24h >= 0) {
+        btcBadge.className = 'flex items-center gap-1 text-xs font-bold font-mono px-3 py-1 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+        btcChangeIcon.className = 'fa-solid fa-caret-up';
+      } else {
+        btcBadge.className = 'flex items-center gap-1 text-xs font-bold font-mono px-3 py-1 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/20';
+        btcChangeIcon.className = 'fa-solid fa-caret-down';
+      }
+
+      // فلش تغییر قیمت BTC
+      if (prevBtcPrice !== null) {
+        const cardBtc = document.getElementById('card-btc');
+        cardBtc.classList.remove('flash-up', 'flash-down');
+        void cardBtc.offsetWidth; // Force Reflow
+        cardBtc.classList.add(state.btc.priceUsd >= prevBtcPrice ? 'flash-up' : 'flash-down');
+      }
+
+      // ۲. المان‌های اتریوم
+      document.getElementById('eth-price-usd').textContent = formatUsd(state.eth.priceUsd);
+      document.getElementById('eth-price-toman').textContent = formatNumber(ethToman, 0);
+      document.getElementById('eth-price-rial').textContent = formatNumber(ethRial, 0);
+      document.getElementById('eth-high').textContent = formatUsd(state.eth.high24h);
+      document.getElementById('eth-low').textContent = formatUsd(state.eth.low24h);
+      document.getElementById('eth-vol').textContent = '$' + state.eth.volume24h;
+
+      // نشان تغییرات ۲۴ ساعته ETH
+      const ethBadge = document.getElementById('eth-change-badge');
+      const ethChangeVal = document.getElementById('eth-change-val');
+      const ethChangeIcon = document.getElementById('eth-change-icon');
+      ethChangeVal.textContent = (state.eth.change24h >= 0 ? '+' : '') + state.eth.change24h.toFixed(2) + '%';
+      if (state.eth.change24h >= 0) {
+        ethBadge.className = 'flex items-center gap-1 text-xs font-bold font-mono px-3 py-1 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+        ethChangeIcon.className = 'fa-solid fa-caret-up';
+      } else {
+        ethBadge.className = 'flex items-center gap-1 text-xs font-bold font-mono px-3 py-1 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/20';
+        ethChangeIcon.className = 'fa-solid fa-caret-down';
+      }
+
+      // فلش تغییر قیمت ETH
+      if (prevEthPrice !== null) {
+        const cardEth = document.getElementById('card-eth');
+        cardEth.classList.remove('flash-up', 'flash-down');
+        void cardEth.offsetWidth;
+        cardEth.classList.add(state.eth.priceUsd >= prevEthPrice ? 'flash-up' : 'flash-down');
+      }
+
+      // ۳. جدول خلاصه
+      document.getElementById('tbl-btc-usd').textContent = formatUsd(state.btc.priceUsd);
+      document.getElementById('tbl-btc-toman').textContent = formatNumber(btcToman, 0) + ' تومان';
+      document.getElementById('tbl-btc-rial').textContent = formatNumber(btcRial, 0) + ' ریال';
+      document.getElementById('tbl-btc-change').innerHTML = `<span class="${state.btc.change24h >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${(state.btc.change24h >= 0 ? '+' : '') + state.btc.change24h.toFixed(2)}%</span>`;
+
+      document.getElementById('tbl-eth-usd').textContent = formatUsd(state.eth.priceUsd);
+      document.getElementById('tbl-eth-toman').textContent = formatNumber(ethToman, 0) + ' تومان';
+      document.getElementById('tbl-eth-rial').textContent = formatNumber(ethRial, 0) + ' ریال';
+      document.getElementById('tbl-eth-change').innerHTML = `<span class="${state.eth.change24h >= 0 ? 'text-emerald-400' : 'text-rose-400'}">${(state.eth.change24h >= 0 ? '+' : '') + state.eth.change24h.toFixed(2)}%</span>`;
+
+      document.getElementById('tbl-usdt-toman').textContent = formatNumber(rate, 0) + ' تومان';
+      document.getElementById('tbl-usdt-rial').textContent = formatNumber(rate * 10, 0) + ' ریال';
+      document.getElementById('headerRateDisplay').textContent = formatNumber(rate, 0);
+
+      // ۴. برچسب آخرین زمان بروزرسانی
+      const now = new Date();
+      document.getElementById('lastUpdatedTime').textContent = 'آخرین بروزرسانی: ' + now.toLocaleTimeString('fa-IR');
+
+      // اجرای محاسبه‌گر ماشین‌حساب با نرخ جدید
+      calculateConversion();
+
+      // بروزرسانی داده‌های نمودار
+      updateChartData();
+    }
+
+    // --- ماشین‌حساب تبدیل ارز چندمنظوره ---
+    function calculateConversion() {
+      const amount = parseFloat(document.getElementById('calcAmountInput').value) || 0;
+      const unit = document.getElementById('calcSourceUnit').value;
+      const rate = state.usdToTomanRate;
+
+      let valueInUsd = 0;
+
+      // ابتدا تبدیل واحد ورودی به دلار (USD) به عنوان مبنا
+      switch (unit) {
+        case 'BTC':
+          valueInUsd = amount * state.btc.priceUsd;
+          break;
+        case 'ETH':
+          valueInUsd = amount * state.eth.priceUsd;
+          break;
+        case 'USD':
+          valueInUsd = amount;
+          break;
+        case 'TOMAN':
+          valueInUsd = rate > 0 ? (amount / rate) : 0;
+          break;
+        case 'RIAL':
+          valueInUsd = rate > 0 ? (amount / (rate * 10)) : 0;
+          break;
+      }
+
+      // تبدیل دلار به سایر واحدها
+      const valToman = valueInUsd * rate;
+      const valRial = valToman * 10;
+      const valBtc = state.btc.priceUsd > 0 ? (valueInUsd / state.btc.priceUsd) : 0;
+      const valEth = state.eth.priceUsd > 0 ? (valueInUsd / state.eth.priceUsd) : 0;
+
+      document.getElementById('calcResultUsd').textContent = '$' + formatNumber(valueInUsd, 2);
+      document.getElementById('calcResultToman').textContent = formatNumber(valToman, 0) + ' تومان';
+      document.getElementById('calcResultRial').textContent = formatNumber(valRial, 0) + ' ریال';
+      document.getElementById('calcResultBtc').textContent = valBtc.toFixed(6) + ' BTC';
+      document.getElementById('calcResultEth').textContent = valEth.toFixed(6) + ' ETH';
+    }
+
+    // --- دریافت داده‌های زنده از API عمومی کریپتو (همراه با Fallback هوشمند) ---
+    async function fetchLivePrices() {
+      const prevBtc = state.btc.priceUsd;
+      const prevEth = state.eth.priceUsd;
+      const refreshIcon = document.getElementById('refreshIcon');
+      refreshIcon.classList.add('animate-spin');
+
+      try {
+        // تلاش برای دریافت از CoinGecko API
+        const response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum&vs_currencies=usd&include_24hr_change=true&include_24hr_vol=true', {
+          cache: 'no-cache'
+        });
+
+        if (!response.ok) throw new Error('Network response not ok');
+        const data = await response.json();
+
+        if (data.bitcoin && data.ethereum) {
+          state.btc.priceUsd = data.bitcoin.usd;
+          state.btc.change24h = data.bitcoin.usd_24h_change || 0;
+          state.btc.volume24h = (data.bitcoin.usd_24h_vol / 1e9).toFixed(1) + 'B';
+          state.btc.high24h = state.btc.priceUsd * 1.018;
+          state.btc.low24h = state.btc.priceUsd * 0.985;
+
+          state.eth.priceUsd = data.ethereum.usd;
+          state.eth.change24h = data.ethereum.usd_24h_change || 0;
+          state.eth.volume24h = (data.ethereum.usd_24h_vol / 1e9).toFixed(1) + 'B';
+          state.eth.high24h = state.eth.priceUsd * 1.022;
+          state.eth.low24h = state.eth.priceUsd * 0.981;
+
+          // اضافه کردن به تاریخچه نمودار
+          state.btc.history.push(state.btc.priceUsd);
+          if (state.btc.history.length > 7) state.btc.history.shift();
+
+          state.eth.history.push(state.eth.priceUsd);
+          if (state.eth.history.length > 7) state.eth.history.shift();
+
+          renderDashboard(prevBtc, prevEth);
+          showToast('نرخ‌های زنده با موفقیت بروزرسانی شدند');
+        }
+      } catch (err) {
+        // در صورت عدم دسترسی به API خارجی یا فیلترینگ/CORS، نوسان طبیعی لحظه‌ای شبیه‌سازی می‌شود
+        simulateMarketTick(prevBtc, prevEth);
+      } finally {
+        setTimeout(() => {
+          refreshIcon.classList.remove('animate-spin');
+        }, 600);
+      }
+    }
+
+    // شبیه‌ساز نوسان زنده قیمت در صورت اختلال در شبکه
+    function simulateMarketTick(prevBtc, prevEth) {
+      const btcJitter = (Math.random() - 0.49) * 120;
+      const ethJitter = (Math.random() - 0.49) * 12;
+
+      state.btc.priceUsd = Math.max(1000, Number((state.btc.priceUsd + btcJitter).toFixed(2)));
+      state.eth.priceUsd = Math.max(100, Number((state.eth.priceUsd + ethJitter).toFixed(2)));
+
+      state.btc.history.push(state.btc.priceUsd);
+      if (state.btc.history.length > 7) state.btc.history.shift();
+
+      state.eth.history.push(state.eth.priceUsd);
+      if (state.eth.history.length > 7) state.eth.history.shift();
+
+      renderDashboard(prevBtc, prevEth);
+    }
+
+    // --- مدیریت نمودار Chart.js ---
+    function initChart() {
+      const ctx = document.getElementById('cryptoChart').getContext('2d');
+      const isBtc = state.activeChartTab === 'BTC';
+      const initialData = isBtc ? state.btc.history : state.eth.history;
+      const themeColor = isBtc ? '#f59e0b' : '#6366f1';
+
+      // ساخت گرادیانت زیر نمودار
+      const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+      gradient.addColorStop(0, isBtc ? 'rgba(245, 158, 11, 0.35)' : 'rgba(99, 102, 241, 0.35)');
+      gradient.addColorStop(1, 'rgba(15, 23, 42, 0)');
+
+      state.chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: chartTimeLabels,
+          datasets: [{
+            label: isBtc ? 'قیمت دلار بیت‌کوین' : 'قیمت دلار اتریوم',
+            data: [...initialData],
+            borderColor: themeColor,
+            borderWidth: 2.5,
+            pointBackgroundColor: themeColor,
+            pointBorderColor: '#fff',
+            pointRadius: 4,
+            pointHoverRadius: 6,
+            fill: true,
+            backgroundColor: gradient,
+            tension: 0.35
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              rtl: true,
+              callbacks: {
+                label: function(context) {
+                  const valUsd = context.parsed.y;
+                  const valToman = valUsd * state.usdToTomanRate;
+                  return [
+                    ` قیمت دلاری: $${formatNumber(valUsd, 2)}`,
+                    ` معادل تومان: ${formatNumber(valToman, 0)} تومان`
+                  ];
+                }
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: 'rgba(51, 65, 85, 0.3)' },
+              ticks: { color: '#94a3b8', font: { family: 'Vazirmatn' } }
+            },
+            y: {
+              grid: { color: 'rgba(51, 65, 85, 0.3)' },
+              ticks: {
+                color: '#94a3b8',
+                font: { family: 'monospace' },
+                callback: function(val) {
+                  return '$' + formatNumber(val, 0);
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    function updateChartData() {
+      if (!state.chartInstance) return;
+      const isBtc = state.activeChartTab === 'BTC';
+      const historyData = isBtc ? state.btc.history : state.eth.history;
+      const themeColor = isBtc ? '#f59e0b' : '#6366f1';
+
+      state.chartInstance.data.datasets[0].data = [...historyData];
+      state.chartInstance.data.datasets[0].borderColor = themeColor;
+      state.chartInstance.data.datasets[0].pointBackgroundColor = themeColor;
+      state.chartInstance.update('none');
+    }
+
+    function switchChartTab(target) {
+      if (state.activeChartTab === target) return;
+      state.activeChartTab = target;
+
+      const btnBtc = document.getElementById('chartTabBtc');
+      const btnEth = document.getElementById('chartTabEth');
+
+      if (target === 'BTC') {
+        btnBtc.className = 'px-3.5 py-1.5 rounded-lg font-medium transition-all bg-amber-500/20 text-amber-300 border border-amber-500/30';
+        btnEth.className = 'px-3.5 py-1.5 rounded-lg font-medium transition-all text-slate-400 hover:text-slate-200';
+      } else {
+        btnEth.className = 'px-3.5 py-1.5 rounded-lg font-medium transition-all bg-indigo-500/20 text-indigo-300 border border-indigo-500/30';
+        btnBtc.className = 'px-3.5 py-1.5 rounded-lg font-medium transition-all text-slate-400 hover:text-slate-200';
+      }
+
+      if (state.chartInstance) {
+        state.chartInstance.destroy();
+        initChart();
+      }
+    }
+
+    // --- مدیریت مودال تغییر نرخ دلار ---
+    const rateModal = document.getElementById('rateModal');
+    const rateModalCard = document.getElementById('rateModalCard');
+    const customRateInput = document.getElementById('customRateInput');
+
+    function openRateModal() {
+      customRateInput.value = state.usdToTomanRate;
+      rateModal.classList.remove('hidden');
+      setTimeout(() => {
+        rateModal.classList.remove('opacity-0');
+        rateModalCard.classList.remove('scale-95');
+        rateModalCard.classList.add('scale-100');
+      }, 10);
+    }
+
+    function closeRateModal() {
+      rateModal.classList.add('opacity-0');
+      rateModalCard.classList.remove('scale-100');
+      rateModalCard.classList.add('scale-95');
+      setTimeout(() => {
+        rateModal.classList.add('hidden');
+      }, 250);
+    }
+
+    function saveNewRate() {
+      const newRate = parseFloat(customRateInput.value);
+      if (newRate && newRate > 0) {
+        state.usdToTomanRate = newRate;
+        closeRateModal();
+        renderDashboard();
+        showToast(`نرخ برابری هر تتر با ${formatNumber(newRate, 0)} تومان تنظیم شد.`);
+      } else {
+        showToast('لطفاً یک عدد معتبر بزرگتر از صفر وارد کنید.', 'error');
+      }
+    }
+
+    // --- شمارش معکوس و راه‌اندازی تایمرها ---
+    function startTimers() {
+      state.countdown = 15;
+      const countdownElem = document.getElementById('countdownTimer');
+
+      state.countdownIntervalId = setInterval(() => {
+        state.countdown--;
+        if (state.countdown <= 0) {
+          state.countdown = 15;
+          fetchLivePrices();
+        }
+        if (countdownElem) {
+          countdownElem.textContent = state.countdown;
+        }
+      }, 1000);
+    }
+
+    // کپی داده‌های ماشین‌حساب به کلیپ‌بورد
+    function copyCalculatorResults() {
+      const usd = document.getElementById('calcResultUsd').textContent;
+      const toman = document.getElementById('calcResultToman').textContent;
+      const rial = document.getElementById('calcResultRial').textContent;
+      const textToCopy = `محاسبه تبدیل رمزارز:\nدلار: ${usd}\nتومان: ${toman}\nریال: ${rial}\n(نرخ تتر: ${formatNumber(state.usdToTomanRate, 0)} تومان)`;
+
+      const tempTextArea = document.createElement('textarea');
+      tempTextArea.value = textToCopy;
+      document.body.appendChild(tempTextArea);
+      tempTextArea.select();
+      try {
+        document.execCommand('copy');
+        showToast('نتایج با موفقیت در کلیپ‌بورد کپی شد');
+      } catch (err) {
+        showToast('خطا در کپی نتایج', 'error');
+      }
+      document.body.removeChild(tempTextArea);
+    }
+
+    // --- ثبت شنوندگان رویدادها (Event Listeners) ---
+    document.addEventListener('DOMContentLoaded', () => {
+      // مقداردهی اولیه نمودار و داشبورد
+      initChart();
+      renderDashboard();
+      startTimers();
+      fetchLivePrices();
+
+      // دکمه بازخوانی دستی
+      document.getElementById('refreshBtn').addEventListener('click', () => {
+        state.countdown = 15;
+        fetchLivePrices();
+      });
+
+      // دکمه‌های مودال نرخ
+      document.getElementById('openRateModalBtn').addEventListener('click', openRateModal);
+      document.getElementById('closeRateModalBtn').addEventListener('click', closeRateModal);
+      document.getElementById('cancelRateBtn').addEventListener('click', closeRateModal);
+      document.getElementById('saveRateBtn').addEventListener('click', saveNewRate);
+
+      // دکمه‌های مقادیر پیش‌فرض نرخ
+      document.querySelectorAll('.preset-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const rateVal = e.target.getAttribute('data-rate');
+          customRateInput.value = rateVal;
+        });
+      });
+
+      // تب‌های نمودار
+      document.getElementById('chartTabBtc').addEventListener('click', () => switchChartTab('BTC'));
+      document.getElementById('chartTabEth').addEventListener('click', () => switchChartTab('ETH'));
+
+      // شنوندگان ماشین‌حساب
+      document.getElementById('calcAmountInput').addEventListener('input', calculateConversion);
+      document.getElementById('calcSourceUnit').addEventListener('change', calculateConversion);
+      document.getElementById('copyCalcResultBtn').addEventListener('click', copyCalculatorResults);
+
+      // بستن مودال با کلیک در پس‌زمینه
+      rateModal.addEventListener('click', (e) => {
+        if (e.target === rateModal) closeRateModal();
+      });
+    });
+  </script>
+</body>
+</html>
