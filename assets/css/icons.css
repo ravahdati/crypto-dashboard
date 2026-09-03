@@ -1,0 +1,4 @@
+/* مجموعه آیکون سبک و محلی؛ بدون وابستگی به فونت یا CDN خارجی. */
+.fa-solid,.fa-regular,.fa-brands{display:inline-flex;align-items:center;justify-content:center;font-style:normal;line-height:1}
+.fa-solid::before,.fa-regular::before,.fa-brands::before{display:block}
+.fa-chart-line::before,.fa-chart-area::before{content:"⌁"}.fa-circle-check::before{content:"✓"}.fa-circle-exclamation::before{content:"!"}.fa-circle-info::before{content:"i"}.fa-coins::before{content:"●"}.fa-pen-to-square::before{content:"✎"}.fa-arrows-rotate::before{content:"↻"}.fa-clock::before{content:"◷"}.fa-bitcoin::before{content:"₿"}.fa-ethereum::before{content:"◆"}.fa-caret-up::before{content:"▲"}.fa-caret-down::before{content:"▼"}.fa-dollar-sign::before{content:"$"}.fa-wallet::before{content:"▰"}.fa-scale-balanced::before{content:"⚖"}.fa-calculator::before{content:"▦"}.fa-copy::before{content:"▣"}.fa-table-list::before{content:"☷"}.fa-sliders::before{content:"☰"}.fa-xmark::before{content:"×"}
